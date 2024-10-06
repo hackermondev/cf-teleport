@@ -2,7 +2,7 @@
 Base URL: https://cfteleport.xyz
 URL query parameters:
 - `proxied` - url to send request to
-- `colo` [colo code]() of cloudflare datacenter to proxy request to
+- `colo` [colo code](https://github.com/hackermondev/cf-teleport/blob/main/worker/src/data/datacenters.json) of cloudflare datacenter to proxy request to
 
 https://cfteleport.xyz/?proxied=https://cloudflare.com/cdn-cgi/trace&colo=SEA
 Teleport to Seattle!
