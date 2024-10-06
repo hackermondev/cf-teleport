@@ -105,7 +105,7 @@ export default {
 		}
 
 
-		const resolveOverride = `${datacenterIp}.dns-${url.hostname}`;
+		const resolveOverride = `${datacenterIp}.dns.${url.hostname}`;
 		if (origin) originHistory.push(origins.indexOf(origin));
 
 		const headers = new Headers(request.headers);
