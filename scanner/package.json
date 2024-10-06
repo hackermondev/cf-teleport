@@ -1,0 +1,10 @@
+{
+  "name": "scanner",
+  "main": "src/index.js",
+  "packageManager": "yarn@4.5.0",
+  "private": true,
+  "version": "0.0.0",
+  "dependencies": {
+    "masscan": "git+https://github.com/hackermondev/masscan-node#ac416ec54b3049380e280a3a0c60153714d33e0e"
+  }
+}
