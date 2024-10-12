@@ -3,6 +3,9 @@
   "packageManager": "yarn@4.5.0",
   "workspaces": [
     "worker",
-    "scanner"
-  ]
+    "scripts"
+  ],
+  "dependencies": {
+    "lodash": "^4.17.21"
+  }
 }

@@ -49,18 +49,17 @@ async function handleInnerRequest(request: Request) {
 	});
 }
 
+import colos from './data/colos.json';
 import datacenters from './data/datacenters.json';
-import origins from './data/origins.json';
-import { findNearestLocation } from './geolocation';
-import { findOnlineAddress } from './network';
+
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const url = new URL(request.url);
-		const cloudflareDatacenter = url.searchParams.get('colo') as keyof typeof datacenters | null;
+		const cloudflareDatacenter = url.searchParams.get('colo');
 		const debugOverrideIp = url.searchParams.get('ip');
 
-		if (request.cf?.colo == cloudflareDatacenter)
+		if ((request.cf?.colo == cloudflareDatacenter) || url.searchParams.has('override'))
 			return await handleInnerRequest(request);
 
 
@@ -68,54 +67,35 @@ export default {
 			switch (url.pathname) {
 				case '/data/datacenters.json':
 					return Response.json(datacenters);
-				case '/data/origins.json':
-					return Response.json(origins);
+				case '/data/colos.json':
+					return Response.json(colos);
 			}
 		}
 
-		if (!debugOverrideIp && !cloudflareDatacenter)
+		const origin = colos.find(c => c.colo == cloudflareDatacenter);
+		if (!debugOverrideIp && !origin)
 			return new Response('Must specify a valid datacenter', { status: 400 });
 
-		const originHistory: Array<number> = [];
-		const maximumOriginRedirect = url.searchParams.has('max_redirects')
-			? parseInt(url.searchParams.get('max_redirects') as string) : 5;
-
-
-		const originHistoryHeader = request.headers.get('cf-teleport-origin-history');
-		if (originHistoryHeader) originHistory.push(...originHistoryHeader.split(',').map(h => parseInt(h)));
-		if (originHistory.length >= maximumOriginRedirect) return new Response('Maximum origin redirect', { status: 508 });
-
-		const datacenter = cloudflareDatacenter && datacenters[cloudflareDatacenter];
-		const availableOrigins = (origins
-			.map((o, index) => originHistory.includes(index) ? false : o)
-			.filter(o => o != false)
-			//@ts-ignore
-			.filter(o => o.asname == 'CLOUDFLARENET' && !o.org.includes('Level 3'))) as typeof origins;
-
-		const origin = datacenter && findNearestLocation(datacenter, availableOrigins);
-
-		let datacenterIp;
-		try {
-			datacenterIp = debugOverrideIp || !origin ? debugOverrideIp : findOnlineAddress(origin.query);
-			if (!datacenterIp)
-				return new Response('Unknown error, cannot find datacenter origin', { status: 412 });
-		} catch (error) {
-			//@ts-ignore
-			return new Response(error, { status: 412 })
-		}
-
-
+		const datacenterIp = debugOverrideIp ? debugOverrideIp : origin?.open[0];
 		const resolveOverride = `${datacenterIp}.dns.${url.hostname}`;
-		if (origin) originHistory.push(origins.indexOf(origin));
+		const timeout = url.searchParams.has('timeout') ?
+			parseInt(url.searchParams.get('timeout') || '') : null;
 
-		const headers = new Headers(request.headers);
-		headers.set('cf-teleport-origin-history', originHistory.join(','));
+		const abort = new AbortController();
+		if (timeout && !isNaN(timeout)) setTimeout(() => abort.abort(), timeout);
+		if (debugOverrideIp) url.searchParams.set('override', '1');
 
-		return await fetch(request.url, {
+		const response = await fetch(url, {
 			method: request.method,
 			body: request.body,
-			headers,
-			cf: { resolveOverride }
-		})
+			headers: request.headers,
+			cf: { resolveOverride },
+			signal: abort.signal,
+		}).catch(err => err);
+		if (response instanceof Error && abort.signal.aborted) {
+			return new Response('Timeout', { status: 522 });
+		}
+
+		return response;
 	},
 } satisfies ExportedHandler<Env>;

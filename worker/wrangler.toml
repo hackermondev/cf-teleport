@@ -5,7 +5,8 @@ compatibility_date = "2024-09-25"
 compatibility_flags = ["nodejs_compat"]
 
 routes = [
-  { pattern = "cfteleport.xyz", custom_domain = true }
+  { pattern = "cfteleport.xyz", custom_domain = true },
+  { pattern = "worker.cfteleport.xyz", custom_domain = true }
 ]
 
 # Workers Logs
